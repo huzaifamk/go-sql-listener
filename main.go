@@ -34,9 +34,6 @@ func main() {
 	host := os.Getenv("STEVE_DB_HOST")
 	port := os.Getenv("STEVE_DB_PORT")
 
-	postgresDB := SetupDatabaseConnection()
-	defer CloseDatabaseConnection(postgresDB)
-
 	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", username, password, host, port, databaseName)
 
 	db, err := sql.Open("mysql", connectionString)
@@ -111,24 +108,32 @@ func (h *MyEventHandler) OnRow(e *canal.RowsEvent) error {
 
 	switch e.Table.Name {
 	case h.targetTableOne:
-		postgresDB := SetupDatabaseConnection()
-		defer CloseDatabaseConnection(postgresDB)
-		err := insertRowIntoTransaction(postgresDB, e.Rows)
-		if err != nil {
-			return err
+		if e.Action == "insert" {
+			postgresDB := SetupDatabaseConnection()
+			defer CloseDatabaseConnection(postgresDB)
+			err := insertRowIntoTransaction(postgresDB, e.Rows)
+			if err != nil {
+				return err
+			}
 		}
 	case h.targetTableTwo:
-		postgresDB := SetupDatabaseConnection()
-		defer CloseDatabaseConnection(postgresDB)
-		err := updateRowIntoTransaction(postgresDB, e.Rows)
-		if err != nil {
-			return err
+		if e.Action == "insert" {
+			postgresDB := SetupDatabaseConnection()
+			defer CloseDatabaseConnection(postgresDB)
+			err := updateRowIntoTransaction(postgresDB, e.Rows)
+			if err != nil {
+				return err
+			}
 		}
 	case h.targetTableThree:
-		fmt.Println("Table:", e.Table.Name)
-		fmt.Println("Action:", e.Action)
-		fmt.Println("Rows:", e.Rows)
-		fmt.Println("-------------------")
+		if e.Action == "insert" {
+			postgresDB := SetupDatabaseConnection()
+			defer CloseDatabaseConnection(postgresDB)
+			err := updateRowIntoTransactionFailed(postgresDB, e.Rows)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
@@ -199,7 +204,15 @@ func insertRowIntoTransaction(db *sql.DB, rows [][]interface{}) error {
 }
 
 func updateRowIntoTransaction(db *sql.DB, rows [][]interface{}) error {
-	_, err := db.Exec("UPDATE transaction SET stop_timestamp = $1, stop_value = $2, stop_reason = $3 WHERE transaction_pk = $4", rows[0][4], rows[0][5], rows[0][6], rows[0][0])
+	_, err := db.Exec("UPDATE transaction SET stop_timestamp = $1, stop_value = $2, stop_reason = $3 WHERE transaction_pk = $4", rows[0][3], rows[0][4], rows[0][5], rows[0][0])
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func updateRowIntoTransactionFailed(db *sql.DB, rows [][]interface{}) error {
+	_, err := db.Exec("UPDATE transaction SET stop_timestamp = $1, stop_value = $2, stop_reason = $3, fail_reason = $4 WHERE transaction_pk = $5", rows[0][3], rows[0][4], rows[0][5], rows[0][6], rows[0][0])
 	if err != nil {
 		return err
 	}
