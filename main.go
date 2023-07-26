@@ -109,8 +109,8 @@ func (h *MyEventHandler) OnRow(e *canal.RowsEvent) error {
 	switch e.Table.Name {
 	case h.targetTableOne:
 		if e.Action == "insert" {
-			postgresDB := SetupDatabaseConnection()
-			defer CloseDatabaseConnection(postgresDB)
+			postgresDB := SetupDatabaseConnectionSqlPostgres()
+			defer CloseDatabaseConnectionSQL(postgresDB)
 			err := insertRowIntoTransaction(postgresDB, e.Rows)
 			if err != nil {
 				return err
@@ -118,8 +118,8 @@ func (h *MyEventHandler) OnRow(e *canal.RowsEvent) error {
 		}
 	case h.targetTableTwo:
 		if e.Action == "insert" {
-			postgresDB := SetupDatabaseConnection()
-			defer CloseDatabaseConnection(postgresDB)
+			postgresDB := SetupDatabaseConnectionSqlPostgres()
+			defer CloseDatabaseConnectionSQL(postgresDB)
 			err := updateRowIntoTransaction(postgresDB, e.Rows)
 			if err != nil {
 				return err
@@ -127,8 +127,8 @@ func (h *MyEventHandler) OnRow(e *canal.RowsEvent) error {
 		}
 	case h.targetTableThree:
 		if e.Action == "insert" {
-			postgresDB := SetupDatabaseConnection()
-			defer CloseDatabaseConnection(postgresDB)
+			postgresDB := SetupDatabaseConnectionSqlPostgres()
+			defer CloseDatabaseConnectionSQL(postgresDB)
 			err := updateRowIntoTransactionFailed(postgresDB, e.Rows)
 			if err != nil {
 				return err
@@ -156,7 +156,7 @@ func waitForTerminationSignal() {
 	<-signals
 }
 
-func SetupDatabaseConnection() *sql.DB {
+func SetupDatabaseConnectionSqlPostgres() *sql.DB {
 	errEnv := godotenv.Load()
 	if errEnv != nil {
 		logrus.Error("loading env vars", errEnv.Error())
@@ -187,7 +187,7 @@ func SetupDatabaseConnection() *sql.DB {
 	return db
 }
 
-func CloseDatabaseConnection(db *sql.DB) {
+func CloseDatabaseConnectionSQL(db *sql.DB) {
 	err := db.Close()
 	if err != nil {
 		logrus.Error("error occured:", err.Error())
